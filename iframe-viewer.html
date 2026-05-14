@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>iframe Viewer</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; width: 100%; overflow: hidden; }
+    body { font-family: 'IBM Plex Sans Arabic', 'Inter', sans-serif; background: #0f1117; color: #e2e8f0; }
+    .app-root { display: flex; flex-direction: column; height: 100vh; width: 100vw; overflow: hidden; }
+    .top-bar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: #16181f; border-bottom: 1px solid rgba(255,255,255,.07); flex-shrink: 0; direction: rtl; }
+    .logo { font-size: 14px; font-weight: 600; color: #94a3b8; white-space: nowrap; }
+    .url-bar { flex: 1; display: flex; align-items: center; gap: 8px; direction: ltr; }
+    .url-input { flex: 1; height: 38px; padding: 0 12px; background: #1e2130; border: 1.5px solid rgba(255,255,255,.1); border-radius: 9px; color: #e2e8f0; font-size: 13px; font-family: 'Inter', monospace; outline: none; transition: border-color .2s, box-shadow .2s; }
+    .url-input:disabled { opacity: .4; cursor: not-allowed; }
+    .url-input::placeholder { color: #4a5568; font-family: 'IBM Plex Sans Arabic', sans-serif; }
+    .url-input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.15); }
+    .go-btn { height: 38px; padding: 0 18px; background: #6366f1; color: #fff; border: none; border-radius: 9px; font-size: 13px; font-family: 'IBM Plex Sans Arabic', sans-serif; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background .18s; }
+    .go-btn:hover:not(:disabled) { background: #4f46e5; }
+    .go-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .settings-btn { height: 38px; padding: 0 16px; background: #1e2130; border: 1.5px solid rgba(255,255,255,.1); border-radius: 9px; color: #94a3b8; font-size: 13px; font-family: 'IBM Plex Sans Arabic', sans-serif; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background .18s, border-color .18s, color .18s; flex-shrink: 0; }
+    .settings-btn:hover { border-color: #6366f1; color: #c7d2fe; }
+    .settings-btn.open { border-color: #6366f1; color: #a5b4fc; background: rgba(99,102,241,.1); }
+    .settings-btn.stop { background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.4); color: #fca5a5; }
+    .loop-bar-wrap { position: relative; height: 28px; background: #1a1d27; border-bottom: 1px solid rgba(255,255,255,.06); overflow: hidden; flex-shrink: 0; display: none; }
+    .loop-bar-fill { position: absolute; inset: 0; height: 100%; background: linear-gradient(90deg,rgba(99,102,241,.35),rgba(139,92,246,.25)); transition: width .9s linear; }
+    .loop-bar-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #94a3b8; font-family: 'Inter', monospace; letter-spacing: .03em; direction: ltr; }
+    .settings-panel { background: #13151e; border-bottom: 1px solid rgba(255,255,255,.08); padding: 20px 20px 16px; direction: rtl; flex-shrink: 0; max-height: 60vh; overflow-y: auto; display: none; }
+    .settings-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+    .settings-header h2 { font-size: 15px; font-weight: 600; }
+    .close-btn { width: 28px; height: 28px; background: rgba(255,255,255,.06); border: none; border-radius: 6px; color: #64748b; cursor: pointer; font-size: 13px; transition: background .15s; }
+    .close-btn:hover { background: rgba(255,255,255,.12); color: #e2e8f0; }
+    .field-label { display: block; font-size: 12px; font-weight: 500; color: #64748b; margin-bottom: 8px; letter-spacing: .04em; }
+    .interval-row { display: flex; align-items: center; gap: 8px; }
+    .interval-input { width: 90px; height: 36px; padding: 0 10px; background: #1e2130; border: 1.5px solid rgba(255,255,255,.1); border-radius: 8px; color: #e2e8f0; font-size: 14px; font-family: 'Inter', monospace; outline: none; text-align: center; }
+    .interval-input:focus { border-color: #6366f1; }
+    .interval-unit { font-size: 13px; color: #64748b; }
+    .entries-list { display: flex; flex-direction: column; gap: 8px; }
+    .entry-row { display: flex; align-items: center; gap: 8px; direction: ltr; }
+    .entry-num { width: 22px; height: 22px; background: rgba(99,102,241,.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #a5b4fc; flex-shrink: 0; }
+    .entry-input { flex: 1; height: 36px; padding: 0 10px; background: #1e2130; border: 1.5px solid rgba(255,255,255,.09); border-radius: 8px; color: #e2e8f0; font-size: 13px; font-family: 'Inter', monospace; outline: none; }
+    .entry-input:focus { border-color: #6366f1; }
+    .entry-input::placeholder { color: #374151; }
+    .remove-btn { width: 28px; height: 28px; background: rgba(239,68,68,.1); border: none; border-radius: 6px; color: #f87171; font-size: 12px; cursor: pointer; flex-shrink: 0; }
+    .remove-btn:hover { background: rgba(239,68,68,.2); }
+    .add-btn { margin-top: 10px; height: 34px; padding: 0 14px; background: transparent; border: 1.5px dashed rgba(255,255,255,.12); border-radius: 8px; color: #64748b; font-size: 13px; font-family: 'IBM Plex Sans Arabic', sans-serif; cursor: pointer; width: 100%; transition: border-color .18s, color .18s; }
+    .add-btn:hover { border-color: #6366f1; color: #a5b4fc; }
+    .settings-footer { margin-top: 16px; border-top: 1px solid rgba(255,255,255,.06); padding-top: 16px; }
+    .apply-btn { width: 100%; height: 40px; background: linear-gradient(135deg,#6366f1,#8b5cf6); color: #fff; border: none; border-radius: 10px; font-size: 14px; font-family: 'IBM Plex Sans Arabic', sans-serif; font-weight: 600; cursor: pointer; }
+    .apply-btn:hover:not(:disabled) { opacity: .9; }
+    .apply-btn:disabled { opacity: .35; cursor: not-allowed; }
+    .frame-area { flex: 1; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+    .embed-frame { flex: 1; width: 100%; height: 100%; border: none; background: #fff; }
+    .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; direction: rtl; }
+    .empty-icon { font-size: 52px; opacity: .45; }
+    .empty-state p { font-size: 15px; line-height: 1.7; color: #64748b; }
+    .empty-state strong { color: #6366f1; }
+  </style>
+</head>
+<body>
+<div class="app-root">
+  <header class="top-bar">
+    <span class="logo">🔗 iframe Viewer</span>
+    <div class="url-bar">
+      <input id="singleInput" type="text" class="url-input" placeholder="أدخل رابطاً واحداً هنا... مثال: google.com" dir="ltr" spellcheck="false" />
+      <button id="goBtn" class="go-btn" onclick="go()">عرض</button>
+    </div>
+    <button id="settingsBtn" class="settings-btn" onclick="toggleSettings()">⚙️ لوب</button>
+  </header>
+
+  <div id="loopBar" class="loop-bar-wrap">
+    <div id="loopBarFill" class="loop-bar-fill" style="width:0%"></div>
+    <span id="loopBarLabel" class="loop-bar-label"></span>
+  </div>
+
+  <div id="settingsPanel" class="settings-panel">
+    <div class="settings-header">
+      <h2>إعدادات اللوب</h2>
+      <button class="close-btn" onclick="toggleSettings()">✕</button>
+    </div>
+    <label class="field-label">المدة بين كل رابط (بالثواني)</label>
+    <div class="interval-row">
+      <input id="intervalInput" type="number" class="interval-input" value="10" min="1" max="3600" />
+      <span class="interval-unit">ثانية</span>
+    </div>
+    <label class="field-label" style="margin-top:20px">الروابط</label>
+    <div id="entriesList" class="entries-list"></div>
+    <button class="add-btn" onclick="addEntry()">+ إضافة رابط</button>
+    <div class="settings-footer">
+      <button id="applyBtn" class="apply-btn" onclick="applyLoop()">▶ تشغيل اللوب</button>
+    </div>
+  </div>
+
+  <main class="frame-area">
+    <div id="emptyState" class="empty-state">
+      <div class="empty-icon">🌐</div>
+      <p>أدخل رابطاً وانقر <strong>عرض</strong></p>
+      <p>أو افتح <strong>⚙️ لوب</strong> لتشغيل روابط متعددة تلقائياً</p>
+    </div>
+    <iframe id="frame" class="embed-frame" style="display:none"
+      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"></iframe>
+  </main>
+</div>
+<script>
+  let entries = [{id:1,url:''},{id:2,url:''}];
+  let nextId = 3;
+  let loopEnabled = false;
+  let loopTimer = null;
+  let loopIndex = 0;
+  let timeLeft = 0;
+  let intervalSecs = 10;
+
+  function normalize(raw) {
+    const t = raw.trim();
+    if (!t) return '';
+    return /^https?:\/\//i.test(t) ? t : 'https://' + t;
+  }
+
+  function go() {
+    const url = normalize(document.getElementById('singleInput').value);
+    if (!url) return;
+    stopLoop();
+    showUrl(url);
+    closeSettings();
+  }
+
+  document.getElementById('singleInput').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+
+  function showUrl(url) {
+    const frame = document.getElementById('frame');
+    const empty = document.getElementById('emptyState');
+    frame.src = url;
+    frame.style.display = '';
+    empty.style.display = 'none';
+  }
+
+  function toggleSettings() {
+    if (loopEnabled) { stopLoopManual(); return; }
+    const p = document.getElementById('settingsPanel');
+    const btn = document.getElementById('settingsBtn');
+    const open = p.style.display === 'flex' || p.style.display === 'block';
+    p.style.display = open ? 'none' : 'block';
+    btn.classList.toggle('open', !open);
+    renderEntries();
+  }
+
+  function closeSettings() {
+    document.getElementById('settingsPanel').style.display = 'none';
+    document.getElementById('settingsBtn').classList.remove('open');
+  }
+
+  function renderEntries() {
+    const list = document.getElementById('entriesList');
+    list.innerHTML = '';
+    entries.forEach((e, i) => {
+      const row = document.createElement('div');
+      row.className = 'entry-row';
+      row.innerHTML = `
+        <span class="entry-num">${i+1}</span>
+        <input class="entry-input" type="text" placeholder="مثال: example.com" value="${e.url}" dir="ltr" spellcheck="false" data-id="${e.id}" />
+        ${entries.length > 1 ? `<button class="remove-btn" data-id="${e.id}">✕</button>` : ''}
+      `;
+      list.appendChild(row);
+    });
+    list.querySelectorAll('.entry-input').forEach(inp => {
+      inp.addEventListener('input', ev => {
+        const id = +ev.target.dataset.id;
+        entries = entries.map(e => e.id === id ? {...e, url: ev.target.value} : e);
+      });
+    });
+    list.querySelectorAll('.remove-btn').forEach(btn => {
+      btn.addEventListener('click', ev => {
+        const id = +ev.currentTarget.dataset.id;
+        entries = entries.filter(e => e.id !== id);
+        renderEntries();
+      });
+    });
+  }
+
+  function addEntry() {
+    entries.push({id: nextId++, url: ''});
+    renderEntries();
+  }
+
+  function applyLoop() {
+    const valid = entries.map(e => normalize(e.url)).filter(Boolean);
+    if (!valid.length) return;
+    intervalSecs = Math.max(1, +document.getElementById('intervalInput').value || 10);
+    closeSettings();
+    loopEnabled = true;
+    document.getElementById('settingsBtn').textContent = '⏹ إيقاف';
+    document.getElementById('settingsBtn').classList.add('stop');
+    document.getElementById('goBtn').disabled = true;
+    document.getElementById('singleInput').disabled = true;
+    document.getElementById('loopBar').style.display = '';
+    loopIndex = 0;
+    timeLeft = intervalSecs;
+    showUrl(valid[0]);
+    updateBar(valid[0]);
+    loopTimer = setInterval(() => {
+      timeLeft--;
+      const v2 = entries.map(e => normalize(e.url)).filter(Boolean);
+      updateBar(v2[loopIndex], timeLeft);
+      if (timeLeft <= 0) {
+        loopIndex = (loopIndex + 1) % v2.length;
+        showUrl(v2[loopIndex]);
+        timeLeft = intervalSecs;
+        updateBar(v2[loopIndex], timeLeft);
+      }
+    }, 1000);
+  }
+
+  function updateBar(url, t) {
+    const pct = t != null ? ((intervalSecs - t) / intervalSecs) * 100 : 0;
+    document.getElementById('loopBarFill').style.width = pct + '%';
+    document.getElementById('loopBarLabel').textContent =
+      (url || '').replace(/^https?:\/\//, '').slice(0, 50) + (t != null ? ' — ' + t + 'ث' : '');
+  }
+
+  function stopLoop() {
+    if (loopTimer) { clearInterval(loopTimer); loopTimer = null; }
+    loopEnabled = false;
+  }
+
+  function stopLoopManual() {
+    stopLoop();
+    document.getElementById('settingsBtn').textContent = '⚙️ لوب';
+    document.getElementById('settingsBtn').classList.remove('stop');
+    document.getElementById('goBtn').disabled = false;
+    document.getElementById('singleInput').disabled = false;
+    document.getElementById('loopBar').style.display = 'none';
+  }
+
+  renderEntries();
+</script>
+</body>
+</html>
