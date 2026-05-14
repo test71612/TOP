@@ -143,7 +143,14 @@
         if (Array.isArray(p.entries) && p.entries.length > 0) return p;
       }
     } catch {}
-    return { entries: [{id:1,url:''},{id:2,url:''}], interval: 10, preloadSecs: 3 };
+    return {
+      entries: [
+        {id:1, url:'https://tikfinity.zerody.one/widget/topgifter?cid=3152097'},
+        {id:2, url:'https://tikfinity.zerody.one/widget/topliker?cid=3152097'}
+      ],
+      interval: 30,
+      preloadSecs: 3
+    };
   }
 
   function persistSettings() {
